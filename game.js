@@ -708,10 +708,7 @@ function onPaymentSuccess(response) {
   // Activate PRO
   state.player.isPro = true;
 
-  // Store payment proof
-  // NOTE: In production, store this server-side after signature verification.
-  // localStorage can be used on your own domain (uncomment below):
-  // localStorage.setItem('skyslop_pro', JSON.stringify({ active:true, paymentId:response.razorpay_payment_id, plan:selectedPlan, timestamp:Date.now() }));
+  // Store payment proof in memory (for production, persist server-side after signature verification)
   window.__skyslop_pro = {
     active: true,
     paymentId: response.razorpay_payment_id,
@@ -878,10 +875,8 @@ document.getElementById('btnSkipPay').addEventListener('click', () => {
   showScreen('mainMenu');
 });
 
-// ── Restore PRO status ────────────────────────────────────────
-// In production on your own domain, restore from localStorage:
-// try { const d = JSON.parse(localStorage.getItem('skyslop_pro')||'null'); if(d?.active) state.player.isPro = true; } catch(e){}
-// For preview, we check the in-memory flag:
+// ── Restore PRO status from session ────────────────────────────
+// For production, persist and restore from your backend database.
 if (window.__skyslop_pro?.active) {
   state.player.isPro = true;
   console.log('[SKYSLOP] PRO restored from session');
