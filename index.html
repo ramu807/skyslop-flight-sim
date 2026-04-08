@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKYSLOP — AI Flight Simulator</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- LOADING SCREEN -->
+  <div id="loadingScreen" class="overlay">
+    <div class="loading-content">
+      <div class="logo-mark">
+        <svg viewBox="0 0 120 120" width="80" height="80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60 10L95 45L80 50L60 30L40 50L25 45Z" stroke="currentColor" stroke-width="2.5" fill="currentColor" opacity="0.15"/>
+          <path d="M60 30L90 60L75 65L60 50L45 65L30 60Z" stroke="currentColor" stroke-width="2" fill="currentColor" opacity="0.3"/>
+          <path d="M35 70L60 50L85 70L60 110Z" stroke="currentColor" stroke-width="2.5" fill="currentColor" opacity="0.12"/>
+          <circle cx="60" cy="55" r="6" fill="currentColor" opacity="0.9"/>
+          <line x1="20" y1="80" x2="100" y2="80" stroke="currentColor" stroke-width="1" opacity="0.2" stroke-dasharray="4 4"/>
+        </svg>
+      </div>
+      <h1 class="game-title">SKYSLOP</h1>
+      <p class="game-subtitle">AI FLIGHT SIMULATOR</p>
+      <div class="loading-bar-wrap">
+        <div class="loading-bar" id="loadingBar"></div>
+      </div>
+      <p class="loading-text" id="loadingText">Initializing flight systems...</p>
+    </div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="mainMenu" class="overlay hidden">
+    <div class="menu-content">
+      <div class="menu-header">
+        <svg viewBox="0 0 120 120" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60 10L95 45L80 50L60 30L40 50L25 45Z" stroke="currentColor" stroke-width="2.5" fill="currentColor" opacity="0.15"/>
+          <path d="M60 30L90 60L75 65L60 50L45 65L30 60Z" stroke="currentColor" stroke-width="2" fill="currentColor" opacity="0.3"/>
+          <path d="M35 70L60 50L85 70L60 110Z" stroke="currentColor" stroke-width="2.5" fill="currentColor" opacity="0.12"/>
+          <circle cx="60" cy="55" r="6" fill="currentColor" opacity="0.9"/>
+        </svg>
+        <h1 class="game-title">SKYSLOP</h1>
+      </div>
+
+      <!-- Aircraft Selection -->
+      <div class="aircraft-select-section">
+        <h2 class="section-label">SELECT AIRCRAFT</h2>
+        <div class="aircraft-categories">
+          <button class="cat-tab active" data-cat="fighter">FIGHTERS</button>
+          <button class="cat-tab" data-cat="commercial">COMMERCIAL</button>
+          <button class="cat-tab" data-cat="special">SPECIAL</button>
+        </div>
+        <div class="aircraft-grid" id="aircraftGrid"></div>
+        <div class="aircraft-stats" id="aircraftStats"></div>
+      </div>
+
+      <!-- Mission Selection -->
+      <div class="mission-section">
+        <h2 class="section-label">SELECT MISSION</h2>
+        <div class="mission-list" id="missionList"></div>
+      </div>
+
+      <button class="btn-primary" id="btnPlay">
+        <span class="btn-icon">▶</span> TAKE OFF
+      </button>
+
+      <div class="player-stats-bar">
+        <div class="stat-chip"><span class="stat-label">RANK</span><span class="stat-value" id="playerRank">Cadet</span></div>
+        <div class="stat-chip"><span class="stat-label">XP</span><span class="stat-value" id="playerXP">0</span></div>
+        <div class="stat-chip"><span class="stat-label">COINS</span><span class="stat-value" id="playerCoins">0</span></div>
+        <div class="stat-chip"><span class="stat-label">FLIGHTS</span><span class="stat-value" id="playerFlights">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYWALL -->
+  <div id="paywall" class="overlay hidden">
+    <div class="paywall-content">
+      <div class="paywall-badge">PRO PILOT</div>
+      <h2 class="paywall-title">Unlock Full Hangar</h2>
+      <p class="paywall-desc">Access 40+ aircraft, unlimited missions, and exclusive skins</p>
+      <div class="paywall-features">
+        <div class="pw-feature">&#10003; All Fighter Jets (F-22, Su-57, J-20...)</div>
+        <div class="pw-feature">&#10003; All Commercial Aircraft (A380, 787...)</div>
+        <div class="pw-feature">&#10003; Unlimited Free Flight Mode</div>
+        <div class="pw-feature">&#10003; Combat Missions & Dogfights</div>
+        <div class="pw-feature">&#10003; Custom Liveries & Skins</div>
+      </div>
+      <div class="paywall-pricing">
+        <button class="pw-plan selected" data-plan="monthly">
+          <span class="pw-price">$4.99</span>
+          <span class="pw-period">/month</span>
+        </button>
+        <button class="pw-plan" data-plan="yearly">
+          <span class="pw-price">$29.99</span>
+          <span class="pw-period">/year</span>
+          <span class="pw-save">SAVE 50%</span>
+        </button>
+        <button class="pw-plan" data-plan="lifetime">
+          <span class="pw-price">$49.99</span>
+          <span class="pw-period">lifetime</span>
+          <span class="pw-save">BEST VALUE</span>
+        </button>
+      </div>
+      <button class="btn-primary pw-buy" id="btnBuy">UPGRADE NOW</button>
+      <button class="btn-ghost" id="btnSkipPay">Continue with Free Tier</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top-left">
+      <div class="hud-speed"><span id="hudSpeed">0</span><small>KTS</small></div>
+      <div class="hud-altitude"><span id="hudAlt">0</span><small>FT</small></div>
+    </div>
+    <div class="hud-top-center">
+      <div class="hud-heading"><span id="hudHeading">000</span>°</div>
+    </div>
+    <div class="hud-top-right">
+      <div class="hud-aircraft-name" id="hudAircraftName">F-22 RAPTOR</div>
+      <div class="hud-mission" id="hudMission">FREE FLIGHT</div>
+    </div>
+    <div class="hud-bottom-left">
+      <div class="hud-throttle">
+        <span class="hud-label">THR</span>
+        <div class="throttle-bar"><div class="throttle-fill" id="hudThrottle"></div></div>
+      </div>
+    </div>
+    <div class="hud-bottom-center">
+      <div class="hud-crosshair">
+        <svg viewBox="0 0 100 100" width="80" height="80">
+          <circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+          <line x1="30" y1="50" x2="40" y2="50" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="60" y1="50" x2="70" y2="50" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="50" y1="30" x2="50" y2="40" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="50" y1="60" x2="50" y2="70" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="50" cy="50" r="3" fill="currentColor" opacity="0.8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="hud-bottom-right">
+      <div class="hud-score">SCORE <span id="hudScore">0</span></div>
+      <div class="hud-combo" id="hudCombo"></div>
+    </div>
+    <div class="hud-warnings" id="hudWarnings"></div>
+    <div class="hud-minimap" id="hudMinimap">
+      <canvas id="minimapCanvas" width="150" height="150"></canvas>
+    </div>
+    <div class="hud-controls-hint" id="controlsHint">
+      WASD/Arrows: Fly &nbsp;|&nbsp; Q/E: Roll &nbsp;|&nbsp; Shift/Ctrl: Throttle &nbsp;|&nbsp; Space: Boost &nbsp;|&nbsp; ESC: Pause
+    </div>
+  </div>
+
+  <!-- PAUSE MENU -->
+  <div id="pauseMenu" class="overlay hidden">
+    <div class="pause-content">
+      <h2>PAUSED</h2>
+      <button class="btn-primary" id="btnResume">RESUME</button>
+      <button class="btn-ghost" id="btnQuit">QUIT TO MENU</button>
+    </div>
+  </div>
+
+  <!-- MISSION COMPLETE -->
+  <div id="missionComplete" class="overlay hidden">
+    <div class="complete-content">
+      <div class="complete-grade" id="completeGrade">S</div>
+      <h2>MISSION COMPLETE</h2>
+      <div class="complete-stats">
+        <div class="cs-row"><span>Score</span><span id="completeScore">0</span></div>
+        <div class="cs-row"><span>Time</span><span id="completeTime">0:00</span></div>
+        <div class="cs-row"><span>XP Earned</span><span id="completeXP">+0</span></div>
+        <div class="cs-row"><span>Coins Earned</span><span id="completeCoins">+0</span></div>
+      </div>
+      <button class="btn-primary" id="btnReplay">REPLAY</button>
+      <button class="btn-ghost" id="btnBackMenu">BACK TO HANGAR</button>
+    </div>
+  </div>
+
+  <!-- DEBUG OVERLAY -->
+  <div id="debugOverlay"></div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
