@@ -365,6 +365,29 @@ body {
   margin-top: 4px;
 }
 .pw-buy { margin-top: 0; }
+
+/* Single Price Display */
+.pw-single-price {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px;
+  background: rgba(0, 200, 255, 0.06);
+  border: 1px solid var(--color-primary);
+  border-radius: 12px;
+  box-shadow: 0 0 24px var(--color-primary-glow);
+}
+.pw-big-price {
+  font-family: var(--font-display);
+  font-size: 56px; font-weight: 800;
+  color: var(--color-text);
+  line-height: 1;
+  text-shadow: 0 0 30px var(--color-primary-glow);
+}
+.pw-price-label {
+  font-size: 13px; font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
 .pw-secure {
   font-size: 11px; color: var(--color-text-muted);
   margin-top: 10px;

@@ -667,7 +667,7 @@ document.getElementById('btnPlay').addEventListener('click', () => {
 // IMPORTANT: Replace this test key with your live Razorpay Key ID
 // Get yours at: https://dashboard.razorpay.com → Settings → API Keys
 // Test key works in sandbox (no real money charged)
-const RAZORPAY_KEY_ID = 'rzp_test_REPLACE_WITH_YOUR_KEY';
+const RAZORPAY_KEY_ID = 'rzp_test_Sb4vMRjxIxMdw1';
 
 // Your settlement UPI — Razorpay collects payments and settles
 // to the bank account linked in your Razorpay Dashboard.
@@ -675,23 +675,12 @@ const RAZORPAY_KEY_ID = 'rzp_test_REPLACE_WITH_YOUR_KEY';
 // bank account in Dashboard → Account & Settings → Bank Account.
 const MERCHANT_UPI_VPA = '9989424223@ybl';
 
-// Plan definitions (amounts in paise: ₹399 = 39900 paise)
+// Plan definitions (amounts in paise: ₹10 = 1000 paise)
 const PLANS = {
-  monthly:  { name: 'Pro Pilot — Monthly',  amount: 39900,  display: '₹399/mo',   description: 'SKYSLOP PRO Monthly Plan' },
-  yearly:   { name: 'Pro Pilot — Yearly',   amount: 239900, display: '₹2,399/yr', description: 'SKYSLOP PRO Yearly Plan (Save 50%)' },
-  lifetime: { name: 'Pro Pilot — Lifetime',  amount: 399900, display: '₹3,999',    description: 'SKYSLOP PRO Lifetime Access' },
+  unlock: { name: 'Unlock All Aircraft', amount: 1000, display: '₹10', description: 'SKYSLOP — Unlock All 46 Aircraft & Missions' },
 };
 
-let selectedPlan = 'monthly';
-
-// ── Plan selection ─────────────────────────────────────────────
-document.querySelectorAll('.pw-plan').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.pw-plan').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedPlan = btn.dataset.plan;
-  });
-});
+let selectedPlan = 'unlock';
 
 // ── Success handler ───────────────────────────────────────────
 function onPaymentSuccess(response) {
