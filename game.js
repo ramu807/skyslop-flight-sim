@@ -708,15 +708,16 @@ function onPaymentSuccess(response) {
   // Activate PRO
   state.player.isPro = true;
 
-  // Store payment proof locally
-  try {
-    localStorage.setItem('skyslop_pro', JSON.stringify({
-      active: true,
-      paymentId: response.razorpay_payment_id,
-      plan: selectedPlan,
-      timestamp: Date.now(),
-    }));
-  } catch(e) { /* localStorage may not be available */ }
+  // Store payment proof
+  // NOTE: In production, store this server-side after signature verification.
+  // localStorage can be used on your own domain (uncomment below):
+  // localStorage.setItem('skyslop_pro', JSON.stringify({ active:true, paymentId:response.razorpay_payment_id, plan:selectedPlan, timestamp:Date.now() }));
+  window.__skyslop_pro = {
+    active: true,
+    paymentId: response.razorpay_payment_id,
+    plan: selectedPlan,
+    timestamp: Date.now(),
+  };
 
   // Sound effects
   playSFX(1000, 0.5, 'sine', 0.2);
@@ -877,14 +878,14 @@ document.getElementById('btnSkipPay').addEventListener('click', () => {
   showScreen('mainMenu');
 });
 
-// ── Restore PRO status from localStorage ──────────────────────
-try {
-  const proData = JSON.parse(localStorage.getItem('skyslop_pro') || 'null');
-  if (proData?.active && proData?.paymentId) {
-    state.player.isPro = true;
-    console.log('[SKYSLOP] PRO restored from local storage, paymentId:', proData.paymentId);
-  }
-} catch(e) { /* ignore */ }
+// ── Restore PRO status ────────────────────────────────────────
+// In production on your own domain, restore from localStorage:
+// try { const d = JSON.parse(localStorage.getItem('skyslop_pro')||'null'); if(d?.active) state.player.isPro = true; } catch(e){}
+// For preview, we check the in-memory flag:
+if (window.__skyslop_pro?.active) {
+  state.player.isPro = true;
+  console.log('[SKYSLOP] PRO restored from session');
+}
 
 // Pause menu
 document.getElementById('btnResume').addEventListener('click', () => {
