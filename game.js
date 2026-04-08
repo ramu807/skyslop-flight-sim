@@ -669,6 +669,12 @@ document.getElementById('btnPlay').addEventListener('click', () => {
 // Test key works in sandbox (no real money charged)
 const RAZORPAY_KEY_ID = 'rzp_test_REPLACE_WITH_YOUR_KEY';
 
+// Your settlement UPI — Razorpay collects payments and settles
+// to the bank account linked in your Razorpay Dashboard.
+// To receive funds at 9989424223@ybl, link the corresponding
+// bank account in Dashboard → Account & Settings → Bank Account.
+const MERCHANT_UPI_VPA = '9989424223@ybl';
+
 // Plan definitions (amounts in paise: ₹399 = 39900 paise)
 const PLANS = {
   monthly:  { name: 'Pro Pilot — Monthly',  amount: 39900,  display: '₹399/mo',   description: 'SKYSLOP PRO Monthly Plan' },
@@ -798,10 +804,13 @@ function openRazorpayCheckout() {
       name: '',
       email: '',
       contact: '',
+      // Pre-fill method to UPI for faster Indian checkouts
+      method: 'upi',
     },
     notes: {
       plan: selectedPlan,
       game: 'SKYSLOP Flight Simulator',
+      merchant_vpa: MERCHANT_UPI_VPA,
     },
     theme: {
       color: '#00c8ff',
