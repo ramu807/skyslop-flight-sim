@@ -659,27 +659,232 @@ document.getElementById('btnPlay').addEventListener('click', () => {
   startGame();
 });
 
-// Paywall buttons
+// ============================================================
+// RAZORPAY PAYMENT INTEGRATION
+// ============================================================
+
+// ── Configuration ──────────────────────────────────────────────
+// IMPORTANT: Replace this test key with your live Razorpay Key ID
+// Get yours at: https://dashboard.razorpay.com → Settings → API Keys
+// Test key works in sandbox (no real money charged)
+const RAZORPAY_KEY_ID = 'rzp_test_REPLACE_WITH_YOUR_KEY';
+
+// Plan definitions (amounts in paise: ₹399 = 39900 paise)
+const PLANS = {
+  monthly:  { name: 'Pro Pilot — Monthly',  amount: 39900,  display: '₹399/mo',   description: 'SKYSLOP PRO Monthly Plan' },
+  yearly:   { name: 'Pro Pilot — Yearly',   amount: 239900, display: '₹2,399/yr', description: 'SKYSLOP PRO Yearly Plan (Save 50%)' },
+  lifetime: { name: 'Pro Pilot — Lifetime',  amount: 399900, display: '₹3,999',    description: 'SKYSLOP PRO Lifetime Access' },
+};
+
+let selectedPlan = 'monthly';
+
+// ── Plan selection ─────────────────────────────────────────────
 document.querySelectorAll('.pw-plan').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.pw-plan').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
+    selectedPlan = btn.dataset.plan;
   });
 });
-document.getElementById('btnBuy').addEventListener('click', () => {
-  // Simulate payment (in production: Stripe/Razorpay integration)
+
+// ── Success handler ───────────────────────────────────────────
+function onPaymentSuccess(response) {
+  console.log('[SKYSLOP] Payment successful:', {
+    paymentId: response.razorpay_payment_id,
+    orderId: response.razorpay_order_id || null,
+    signature: response.razorpay_signature || null,
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // PRODUCTION TODO: Send response.razorpay_payment_id,
+  // razorpay_order_id, and razorpay_signature to your backend
+  // for verification using:
+  //   hmac = crypto.createHmac('sha256', key_secret);
+  //   hmac.update(order_id + '|' + payment_id);
+  //   generated_signature = hmac.digest('hex');
+  // Only grant PRO after server-side verification succeeds.
+  // ──────────────────────────────────────────────────────────
+
+  // Activate PRO
   state.player.isPro = true;
+
+  // Store payment proof locally
+  try {
+    localStorage.setItem('skyslop_pro', JSON.stringify({
+      active: true,
+      paymentId: response.razorpay_payment_id,
+      plan: selectedPlan,
+      timestamp: Date.now(),
+    }));
+  } catch(e) { /* localStorage may not be available */ }
+
+  // Sound effects
   playSFX(1000, 0.5, 'sine', 0.2);
   setTimeout(() => playSFX(1500, 0.3, 'sine', 0.15), 200);
-  state.phase = 'menu';
-  showScreen('mainMenu');
-  renderAircraftGrid();
-  renderMissions();
+  setTimeout(() => playSFX(1200, 0.4, 'sine', 0.18), 400);
+
+  // Show success toast
+  const toast = document.getElementById('paymentToast');
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 5000);
+
+  // Reset button state
+  const btn = document.getElementById('btnBuy');
+  btn.classList.remove('processing');
+  btn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    PRO ACTIVATED
+  `;
+
+  // Return to menu
+  setTimeout(() => {
+    state.phase = 'menu';
+    showScreen('mainMenu');
+    renderAircraftGrid();
+    renderMissions();
+    updatePlayerStatsUI();
+    // Reset button for next visit
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      PAY &amp; UPGRADE NOW
+    `;
+  }, 1500);
+}
+
+// ── Failure handler ───────────────────────────────────────────
+function onPaymentFailure(response) {
+  console.warn('[SKYSLOP] Payment failed:', response.error);
+
+  const btn = document.getElementById('btnBuy');
+  btn.classList.remove('processing');
+  btn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+      <line x1="1" y1="10" x2="23" y2="10"/>
+    </svg>
+    PAY &amp; UPGRADE NOW
+  `;
+
+  // Show inline error message
+  const secureText = document.querySelector('.pw-secure');
+  if (secureText) {
+    secureText.textContent = `Payment failed: ${response.error?.description || 'Please try again'}. Your money was not charged.`;
+    secureText.style.color = 'var(--color-danger)';
+    setTimeout(() => {
+      secureText.innerHTML = '&#128274; Secured by Razorpay &middot; UPI &middot; Cards &middot; Net Banking';
+      secureText.style.color = '';
+    }, 5000);
+  }
+
+  playSFX(200, 0.3, 'sawtooth', 0.2);
+}
+
+// ── Open Razorpay Checkout ────────────────────────────────────
+function openRazorpayCheckout() {
+  const plan = PLANS[selectedPlan];
+
+  const options = {
+    key: RAZORPAY_KEY_ID,
+    amount: plan.amount,  // in paise
+    currency: 'INR',
+    name: 'SKYSLOP',
+    description: plan.description,
+    // order_id: 'order_xxxxxxxxx',  // PRODUCTION: create order server-side and pass ID here
+    handler: onPaymentSuccess,
+    prefill: {
+      name: '',
+      email: '',
+      contact: '',
+    },
+    notes: {
+      plan: selectedPlan,
+      game: 'SKYSLOP Flight Simulator',
+    },
+    theme: {
+      color: '#00c8ff',
+    },
+    modal: {
+      ondismiss: function() {
+        console.log('[SKYSLOP] Payment modal dismissed');
+        const btn = document.getElementById('btnBuy');
+        btn.classList.remove('processing');
+        btn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          PAY &amp; UPGRADE NOW
+        `;
+      },
+    },
+    config: {
+      display: {
+        blocks: {
+          upi: { name: 'Pay via UPI', instruments: [{ method: 'upi' }] },
+          card: { name: 'Pay via Card', instruments: [{ method: 'card' }] },
+          netbanking: { name: 'Net Banking', instruments: [{ method: 'netbanking' }] },
+          wallet: { name: 'Wallets', instruments: [{ method: 'wallet' }] },
+        },
+        sequence: ['block.upi', 'block.card', 'block.netbanking', 'block.wallet'],
+        preferences: { show_default_blocks: false },
+      },
+    },
+  };
+
+  try {
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', onPaymentFailure);
+    rzp.open();
+  } catch(err) {
+    console.error('[SKYSLOP] Razorpay init error:', err);
+    // Fallback: show helpful message
+    const secureText = document.querySelector('.pw-secure');
+    if (secureText) {
+      secureText.textContent = 'Payment gateway loading... Please check your internet connection and try again.';
+      secureText.style.color = 'var(--color-warning)';
+      setTimeout(() => {
+        secureText.innerHTML = '&#128274; Secured by Razorpay &middot; UPI &middot; Cards &middot; Net Banking';
+        secureText.style.color = '';
+      }, 4000);
+    }
+    const btn = document.getElementById('btnBuy');
+    btn.classList.remove('processing');
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      PAY &amp; UPGRADE NOW
+    `;
+  }
+}
+
+// ── Buy button ────────────────────────────────────────────────
+document.getElementById('btnBuy').addEventListener('click', () => {
+  const btn = document.getElementById('btnBuy');
+  btn.classList.add('processing');
+  btn.innerHTML = '<span class="btn-spinner"></span> PROCESSING...';
+  openRazorpayCheckout();
 });
+
 document.getElementById('btnSkipPay').addEventListener('click', () => {
   state.phase = 'menu';
   showScreen('mainMenu');
 });
+
+// ── Restore PRO status from localStorage ──────────────────────
+try {
+  const proData = JSON.parse(localStorage.getItem('skyslop_pro') || 'null');
+  if (proData?.active && proData?.paymentId) {
+    state.player.isPro = true;
+    console.log('[SKYSLOP] PRO restored from local storage, paymentId:', proData.paymentId);
+  }
+} catch(e) { /* ignore */ }
 
 // Pause menu
 document.getElementById('btnResume').addEventListener('click', () => {

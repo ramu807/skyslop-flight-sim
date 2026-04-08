@@ -6,6 +6,7 @@
   <title>SKYSLOP — AI Flight Simulator</title>
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
@@ -89,23 +90,48 @@
         <div class="pw-feature">&#10003; Custom Liveries & Skins</div>
       </div>
       <div class="paywall-pricing">
-        <button class="pw-plan selected" data-plan="monthly">
-          <span class="pw-price">$4.99</span>
+        <button class="pw-plan selected" data-plan="monthly" data-amount="39900">
+          <span class="pw-price">&#8377;399</span>
           <span class="pw-period">/month</span>
         </button>
-        <button class="pw-plan" data-plan="yearly">
-          <span class="pw-price">$29.99</span>
+        <button class="pw-plan" data-plan="yearly" data-amount="239900">
+          <span class="pw-price">&#8377;2,399</span>
           <span class="pw-period">/year</span>
           <span class="pw-save">SAVE 50%</span>
         </button>
-        <button class="pw-plan" data-plan="lifetime">
-          <span class="pw-price">$49.99</span>
+        <button class="pw-plan" data-plan="lifetime" data-amount="399900">
+          <span class="pw-price">&#8377;3,999</span>
           <span class="pw-period">lifetime</span>
           <span class="pw-save">BEST VALUE</span>
         </button>
       </div>
-      <button class="btn-primary pw-buy" id="btnBuy">UPGRADE NOW</button>
+      <div class="payment-methods">
+        <span class="pm-label">Pay with</span>
+        <div class="pm-icons">
+          <span class="pm-icon" title="UPI">UPI</span>
+          <span class="pm-icon" title="Cards">CARD</span>
+          <span class="pm-icon" title="Net Banking">BANK</span>
+          <span class="pm-icon" title="Wallets">WALLET</span>
+        </div>
+      </div>
+      <button class="btn-primary pw-buy" id="btnBuy">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        PAY &amp; UPGRADE NOW
+      </button>
+      <p class="pw-secure">&#128274; Secured by Razorpay &middot; UPI &middot; Cards &middot; Net Banking</p>
       <button class="btn-ghost" id="btnSkipPay">Continue with Free Tier</button>
+    </div>
+  </div>
+
+  <!-- PAYMENT SUCCESS TOAST -->
+  <div id="paymentToast" class="payment-toast hidden">
+    <div class="toast-icon">&#10003;</div>
+    <div class="toast-text">
+      <div class="toast-title">Payment Successful</div>
+      <div class="toast-sub">PRO Pilot activated &middot; All aircraft unlocked</div>
     </div>
   </div>
 

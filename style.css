@@ -137,7 +137,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
   margin-bottom: 16px;
-  max-height: 240px;
+  max-height: 300px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -365,6 +365,83 @@ body {
   margin-top: 4px;
 }
 .pw-buy { margin-top: 0; }
+.pw-secure {
+  font-size: 11px; color: var(--color-text-muted);
+  margin-top: 10px;
+  letter-spacing: 0.02em;
+}
+
+/* Payment Methods */
+.payment-methods {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin: 16px 0 12px;
+}
+.pm-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.1em;
+}
+.pm-icons {
+  display: flex; gap: 6px;
+}
+.pm-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+/* Payment Toast */
+.payment-toast {
+  position: fixed; top: 24px; right: 24px; z-index: 200;
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 24px;
+  background: rgba(0, 30, 15, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 255, 136, 0.15);
+  animation: toastSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.payment-toast.hidden { display: none; }
+.toast-icon {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-success);
+  color: #000;
+  font-size: 18px; font-weight: 800;
+  border-radius: 50%;
+}
+.toast-title {
+  font-size: 14px; font-weight: 700; color: var(--color-success);
+}
+.toast-sub {
+  font-size: 12px; color: var(--color-text-muted);
+}
+@keyframes toastSlideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Payment processing state */
+.btn-primary.processing {
+  opacity: 0.7;
+  pointer-events: none;
+}
+.btn-primary.processing .btn-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* === HUD === */
 #hud {
@@ -548,6 +625,7 @@ body {
   padding: 6px 10px;
   pointer-events: none;
   white-space: pre;
+  display: none;
 }
 
 /* === RESPONSIVE === */
