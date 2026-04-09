@@ -21,12 +21,13 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp }
 // ── YOUR FIREBASE CONFIG ─────────────────────────────────────
 // Replace all values below with your actual Firebase project config
 const firebaseConfig = {
-  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
-  authDomain:        "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket:     "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId:             "REPLACE_WITH_YOUR_APP_ID",
+  apiKey:            "AIzaSyD_7GmW-MxigQG4ukxJ49_aZLkMLrog5KU",
+  authDomain:        "skyslop-3045d.firebaseapp.com",
+  projectId:         "skyslop-3045d",
+  storageBucket:     "skyslop-3045d.firebasestorage.app",
+  messagingSenderId: "210476057144",
+  appId:             "1:210476057144:web:e594a8bc21b0d55ced5ccd",
+  measurementId:     "G-LSB8XQVLF1",
 };
 // ─────────────────────────────────────────────────────────────
 
