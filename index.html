@@ -232,6 +232,31 @@
     </div>
   </div>
 
+  <!-- MOBILE TOUCH CONTROLS (shown only on touchscreens) -->
+  <div id="mobileControls" class="mobile-controls hidden">
+    <!-- Left side: virtual joystick for pitch/yaw -->
+    <div class="mc-joystick-zone" id="joystickZone">
+      <div class="mc-joystick-base" id="joystickBase">
+        <div class="mc-joystick-knob" id="joystickKnob"></div>
+      </div>
+    </div>
+    <!-- Right side: action buttons -->
+    <div class="mc-buttons-right">
+      <button class="mc-btn mc-boost" id="mcBoost">BOOST</button>
+      <div class="mc-btn-row">
+        <button class="mc-btn mc-roll" id="mcRollLeft">&#8634; L</button>
+        <button class="mc-btn mc-roll" id="mcRollRight">R &#8635;</button>
+      </div>
+    </div>
+    <!-- Bottom center: throttle slider -->
+    <div class="mc-throttle-zone">
+      <input type="range" id="mcThrottle" class="mc-throttle-slider" min="0" max="100" value="50" orient="vertical">
+      <span class="mc-throttle-label">THR</span>
+    </div>
+    <!-- Top right: pause button -->
+    <button class="mc-btn mc-pause" id="mcPause">&#10074;&#10074;</button>
+  </div>
+
   <!-- DEBUG OVERLAY -->
   <div id="debugOverlay"></div>
 

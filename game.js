@@ -991,7 +991,7 @@ function updateFlight(dt) {
   const yawRate = 1.0 * agilityFactor;
   const rollRate = 2.5 * agilityFactor;
 
-  // Controls
+  // Controls — keyboard
   let pitch = 0, yaw = 0, roll = 0;
   if (state.keys['KeyW'] || state.keys['ArrowUp']) pitch = -pitchRate;
   if (state.keys['KeyS'] || state.keys['ArrowDown']) pitch = pitchRate;
@@ -1000,12 +1000,22 @@ function updateFlight(dt) {
   if (state.keys['KeyQ']) roll = rollRate;
   if (state.keys['KeyE']) roll = -rollRate;
 
-  // Throttle
+  // Controls — mobile touch (additive, so both inputs work)
+  const ti = window.__touchInput;
+  if (window.__isTouchDevice && ti) {
+    pitch += ti.pitchAxis * pitchRate;
+    yaw   += ti.yawAxis * yawRate;
+    if (ti.rollLeft)  roll += rollRate;
+    if (ti.rollRight) roll -= rollRate;
+    state.throttle = ti.throttle;
+  }
+
+  // Throttle — keyboard overrides
   if (state.keys['ShiftLeft'] || state.keys['ShiftRight']) state.throttle = Math.min(1, state.throttle + dt * 0.8);
   if (state.keys['ControlLeft'] || state.keys['ControlRight']) state.throttle = Math.max(0, state.throttle - dt * 0.8);
 
-  // Boost
-  state.boost = state.keys['Space'] && state.boostFuel > 0;
+  // Boost — keyboard or touch
+  state.boost = (state.keys['Space'] || (ti && ti.boost)) && state.boostFuel > 0;
   if (state.boost) {
     state.boostFuel = Math.max(0, state.boostFuel - dt * 30);
   } else {
@@ -1466,5 +1476,123 @@ document.getElementById('btnSignOut').addEventListener('click', async () => {
   state.player.flights  = 0;
   // onAuthStateChanged will show signInScreen
 });
+
+// ============================================================
+// MOBILE TOUCH CONTROLS
+// ============================================================
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const mobileControls = document.getElementById('mobileControls');
+
+// Touch input state
+const touchInput = { pitchAxis: 0, yawAxis: 0, rollLeft: false, rollRight: false, boost: false, throttle: 0.5 };
+
+if (isTouchDevice) {
+  // Show mobile controls when game is playing
+  const origShowScreen = showScreen;
+  // We override by patching: mobile controls visibility tied to HUD
+  const mobileObserver = new MutationObserver(() => {
+    const hud = document.getElementById('hud');
+    if (hud && !hud.classList.contains('hidden')) {
+      mobileControls.classList.remove('hidden');
+    } else {
+      mobileControls.classList.add('hidden');
+    }
+  });
+  const hud = document.getElementById('hud');
+  if (hud) mobileObserver.observe(hud, { attributes: true, attributeFilter: ['class'] });
+
+  // Hide keyboard controls hint on mobile
+  const hint = document.getElementById('controlsHint');
+  if (hint) hint.style.display = 'none';
+
+  // ── VIRTUAL JOYSTICK ─────────────────────────────────────
+  const jBase = document.getElementById('joystickBase');
+  const jKnob = document.getElementById('joystickKnob');
+  let joystickActive = false;
+  let joystickOrigin = { x: 0, y: 0 };
+  const JOYSTICK_RADIUS = 50;
+
+  function centerKnob() {
+    jKnob.style.left = '50%';
+    jKnob.style.top = '50%';
+    jKnob.style.transform = 'translate(-50%, -50%)';
+  }
+  centerKnob();
+
+  jBase.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const rect = jBase.getBoundingClientRect();
+    joystickOrigin.x = rect.left + rect.width / 2;
+    joystickOrigin.y = rect.top + rect.height / 2;
+    handleJoystickMove(e.touches[0]);
+  }, { passive: false });
+
+  jBase.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!joystickActive) return;
+    handleJoystickMove(e.touches[0]);
+  }, { passive: false });
+
+  jBase.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    joystickActive = false;
+    touchInput.pitchAxis = 0;
+    touchInput.yawAxis = 0;
+    centerKnob();
+  }, { passive: false });
+
+  function handleJoystickMove(touch) {
+    let dx = touch.clientX - joystickOrigin.x;
+    let dy = touch.clientY - joystickOrigin.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > JOYSTICK_RADIUS) {
+      dx = (dx / dist) * JOYSTICK_RADIUS;
+      dy = (dy / dist) * JOYSTICK_RADIUS;
+    }
+    // Map to -1..1
+    touchInput.yawAxis = -(dx / JOYSTICK_RADIUS);   // left/right
+    touchInput.pitchAxis = -(dy / JOYSTICK_RADIUS);  // up/down
+    // Move knob visually
+    jKnob.style.left = `calc(50% + ${dx}px)`;
+    jKnob.style.top = `calc(50% + ${dy}px)`;
+    jKnob.style.transform = 'translate(-50%, -50%)';
+  }
+
+  // ── BOOST BUTTON ─────────────────────────────────────────
+  const boostBtn = document.getElementById('mcBoost');
+  boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); touchInput.boost = true; boostBtn.classList.add('active'); }, { passive: false });
+  boostBtn.addEventListener('touchend', (e) => { e.preventDefault(); touchInput.boost = false; boostBtn.classList.remove('active'); }, { passive: false });
+  boostBtn.addEventListener('touchcancel', () => { touchInput.boost = false; boostBtn.classList.remove('active'); });
+
+  // ── ROLL BUTTONS ─────────────────────────────────────────
+  const rollL = document.getElementById('mcRollLeft');
+  const rollR = document.getElementById('mcRollRight');
+  rollL.addEventListener('touchstart', (e) => { e.preventDefault(); touchInput.rollLeft = true; rollL.classList.add('active'); }, { passive: false });
+  rollL.addEventListener('touchend', (e) => { e.preventDefault(); touchInput.rollLeft = false; rollL.classList.remove('active'); }, { passive: false });
+  rollL.addEventListener('touchcancel', () => { touchInput.rollLeft = false; rollL.classList.remove('active'); });
+  rollR.addEventListener('touchstart', (e) => { e.preventDefault(); touchInput.rollRight = true; rollR.classList.add('active'); }, { passive: false });
+  rollR.addEventListener('touchend', (e) => { e.preventDefault(); touchInput.rollRight = false; rollR.classList.remove('active'); }, { passive: false });
+  rollR.addEventListener('touchcancel', () => { touchInput.rollRight = false; rollR.classList.remove('active'); });
+
+  // ── THROTTLE SLIDER ──────────────────────────────────────
+  const throttleSlider = document.getElementById('mcThrottle');
+  throttleSlider.addEventListener('input', () => {
+    touchInput.throttle = parseInt(throttleSlider.value) / 100;
+  });
+
+  // ── PAUSE BUTTON ─────────────────────────────────────────
+  document.getElementById('mcPause').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (state.phase === 'playing') {
+      state.phase = 'paused';
+      showScreen('pauseMenu');
+    }
+  }, { passive: false });
+}
+
+// Expose touchInput so updateFlight can use it
+window.__touchInput = touchInput;
+window.__isTouchDevice = isTouchDevice;
 
 init();
