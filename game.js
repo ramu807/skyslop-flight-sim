@@ -1,4 +1,8 @@
 import * as THREE from 'https://esm.sh/three@0.162.0';
+import {
+  signInWithGoogle, signOutUser, initAuthListener,
+  grantProAccess, saveProgress, IS_CONFIGURED,
+} from './firebase.js';
 
 // ============================================================
 // AIRCRAFT DATABASE — Real-world fighter jets & commercial planes
@@ -545,7 +549,7 @@ window.addEventListener('resize', () => {
 // UI MANAGEMENT
 // ============================================================
 function showScreen(id) {
-  ['loadingScreen','mainMenu','paywall','pauseMenu','missionComplete'].forEach(s => {
+  ['loadingScreen','mainMenu','paywall','pauseMenu','missionComplete','signInScreen'].forEach(s => {
     document.getElementById(s).classList.add('hidden');
   });
   if (id === 'playing') {
@@ -702,6 +706,16 @@ function onPaymentSuccess(response) {
 
   // Activate PRO
   state.player.isPro = true;
+
+  // Save PRO status to Firestore if user is signed in
+  import('./firebase.js').then(({ currentUser, grantProAccess }) => {
+    if (currentUser?.uid) {
+      grantProAccess(currentUser.uid, response.razorpay_payment_id, selectedPlan);
+      // Update PRO badge in menu
+      const badges = document.getElementById('userBadges');
+      if (badges) badges.innerHTML = '<span class="badge-pro">\u2605 PRO</span>';
+    }
+  });
 
   // Store payment proof in memory (for production, persist server-side after signature verification)
   window.__skyslop_pro = {
@@ -1143,6 +1157,17 @@ function completeMission() {
   state.player.xp += xpEarned;
   state.player.coins += coinsEarned;
 
+  // Save progress to Firestore
+  import('./firebase.js').then(({ currentUser, saveProgress }) => {
+    if (currentUser?.uid) {
+      saveProgress(currentUser.uid, {
+        xp:      state.player.xp,
+        coins:   state.player.coins,
+        flights: state.player.flights,
+      });
+    }
+  });
+
   // Grade
   let grade = 'C';
   if (totalScore > 5000) grade = 'S';
@@ -1355,14 +1380,91 @@ async function init() {
   renderMissions();
   updatePlayerStatsUI();
 
-  // Show menu
-  setTimeout(() => {
-    state.phase = 'menu';
-    showScreen('mainMenu');
-  }, 400);
-
-  // Start game loop
+  // Start game loop first
   gameLoop();
+
+  // Init Firebase auth — shows sign-in screen or menu based on state
+  initAuthListener({
+    onSignedIn: (user, profile) => {
+      // Restore player data from Firestore
+      if (profile) {
+        if (profile.isPro) state.player.isPro = true;
+        if (profile.xp)    state.player.xp    = profile.xp;
+        if (profile.coins) state.player.coins = profile.coins;
+        if (profile.flights) state.player.flights = profile.flights;
+      }
+      // Update profile bar in menu
+      const avatar = document.getElementById('userAvatar');
+      const name   = document.getElementById('userName');
+      const email  = document.getElementById('userEmail');
+      const badges = document.getElementById('userBadges');
+      if (avatar) { avatar.src = user.photoURL || ''; avatar.style.display = user.photoURL ? 'block' : 'none'; }
+      if (name)   name.textContent  = user.displayName || 'Player';
+      if (email)  email.textContent = user.email || '';
+      if (badges) {
+        badges.innerHTML = state.player.isPro
+          ? '<span class="badge-pro">★ PRO</span>'
+          : '<span class="badge-guest">FREE</span>';
+      }
+      state.phase = 'menu';
+      renderAircraftGrid();
+      renderMissions();
+      updatePlayerStatsUI();
+      showScreen('mainMenu');
+    },
+    onSignedOut: () => {
+      // Show sign-in screen
+      state.phase = 'signin';
+      showScreen('signInScreen');
+    },
+    onGuest: () => {
+      // Firebase not configured — go straight to menu
+      state.phase = 'menu';
+      showScreen('mainMenu');
+    },
+  });
 }
+
+// ── Sign In / Sign Out button handlers ────────────────────────
+document.getElementById('btnGoogleSignIn').addEventListener('click', async () => {
+  const btn = document.getElementById('btnGoogleSignIn');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+  const user = await signInWithGoogle();
+  if (!user) {
+    btn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-8 20-20 0-1.3-.1-2.7-.4-4z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.4 19 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.5 26.8 36 24 36c-5.2 0-9.5-3.3-11.2-8l-6.5 5C9.7 39.6 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C40.6 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"/>
+      </svg>
+      Continue with Google
+    `;
+    btn.disabled = false;
+  }
+  // onAuthStateChanged will handle UI update on success
+});
+
+document.getElementById('btnPlayGuest').addEventListener('click', () => {
+  state.phase = 'menu';
+  const badges = document.getElementById('userBadges');
+  if (badges) badges.innerHTML = '<span class="badge-guest">GUEST</span>';
+  const name = document.getElementById('userName');
+  if (name) name.textContent = 'Guest';
+  renderAircraftGrid();
+  renderMissions();
+  updatePlayerStatsUI();
+  showScreen('mainMenu');
+});
+
+document.getElementById('btnSignOut').addEventListener('click', async () => {
+  await signOutUser();
+  state.player.isPro    = false;
+  state.player.xp       = 0;
+  state.player.coins    = 250;
+  state.player.flights  = 0;
+  // onAuthStateChanged will show signInScreen
+});
 
 init();
