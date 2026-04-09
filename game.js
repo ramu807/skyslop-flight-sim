@@ -3,6 +3,11 @@ import {
   signInWithGoogle, signOutUser, initAuthListener,
   grantProAccess, saveProgress, IS_CONFIGURED,
 } from './firebase.js';
+import {
+  STORY_CAMPAIGN, storyState, resetStoryState, cleanupStoryObjects,
+  spawnWarzoneThreats, updateWarzoneObjects, checkWaypointProgress,
+  getCurrentWaypoint, getWaypointDirection, createWaypointRing,
+} from './story.js';
 
 // ============================================================
 // AIRCRAFT DATABASE — Real-world fighter jets & commercial planes
@@ -549,9 +554,15 @@ window.addEventListener('resize', () => {
 // UI MANAGEMENT
 // ============================================================
 function showScreen(id) {
-  ['loadingScreen','mainMenu','paywall','pauseMenu','missionComplete','signInScreen'].forEach(s => {
+  ['loadingScreen','mainMenu','paywall','pauseMenu','missionComplete','signInScreen','storySelect','storyBriefing','storyResult'].forEach(s => {
     document.getElementById(s).classList.add('hidden');
   });
+  // Story HUD visibility
+  const storyHud = document.getElementById('storyHud');
+  if (storyHud) {
+    if (id === 'playing' && storyState.active) storyHud.classList.remove('hidden');
+    else storyHud.classList.add('hidden');
+  }
   if (id === 'playing') {
     document.getElementById('hud').classList.remove('hidden');
   } else {
@@ -1313,7 +1324,11 @@ function gameLoop() {
 
   if (state.phase === 'playing') {
     updateFlight(dt);
-    updateMission(dt);
+    if (storyState.active) {
+      updateStoryMission(dt);
+    } else {
+      updateMission(dt);
+    }
     updateParticles(dt);
     updateContrails();
     updateEngineSound();
@@ -1475,6 +1490,234 @@ document.getElementById('btnSignOut').addEventListener('click', async () => {
   state.player.coins    = 250;
   state.player.flights  = 0;
   // onAuthStateChanged will show signInScreen
+});
+
+// ============================================================
+// STORY CAMPAIGN INTEGRATION
+// ============================================================
+
+// Story Campaign button → open chapter select
+document.getElementById('btnStoryCampaign').addEventListener('click', () => {
+  const chapDiv = document.getElementById('storyChapters');
+  chapDiv.innerHTML = '';
+  STORY_CAMPAIGN.chapters.forEach((ch, i) => {
+    const card = document.createElement('div');
+    card.className = `story-chapter-card${ch.unlocked ? '' : ' locked'}`;
+    card.innerHTML = `
+      <div class="sch-name">${ch.icon} ${ch.name}</div>
+      <div class="sch-desc">${ch.desc}</div>
+      <div class="sch-meta">${ch.difficulty} &middot; ${ch.passengers} passengers &middot; +${ch.xp} XP &middot; +${ch.reward} coins</div>
+    `;
+    card.addEventListener('click', () => {
+      if (!ch.unlocked) return;
+      openBriefing(i);
+    });
+    chapDiv.appendChild(card);
+  });
+  showScreen('storySelect');
+});
+
+function openBriefing(chapterIdx) {
+  const ch = STORY_CAMPAIGN.chapters[chapterIdx];
+  document.getElementById('briefingTitle').textContent = ch.name;
+  document.getElementById('briefingDesc').textContent = ch.desc;
+  document.getElementById('briefPassengers').textContent = ch.passengers;
+  document.getElementById('briefRoute').textContent = chapterIdx === 0 ? 'BOM \u2192 LHR' : 'LHR \u2192 BOM';
+  document.getElementById('briefDiff').textContent = ch.difficulty;
+  document.getElementById('briefReward').textContent = ch.reward.toLocaleString();
+  document.getElementById('btnStartStory').onclick = () => startStoryMission(chapterIdx);
+  showScreen('storyBriefing');
+}
+
+document.getElementById('btnStoryBack').addEventListener('click', () => showScreen('mainMenu'));
+document.getElementById('btnBriefBack').addEventListener('click', () => {
+  const chapDiv = document.getElementById('storyChapters');
+  // Re-render chapters
+  document.getElementById('btnStoryCampaign').click();
+});
+
+function startStoryMission(chapterIdx) {
+  resetStoryState(chapterIdx);
+
+  // Force a commercial aircraft for story mode
+  const commercialAircraft = AIRCRAFT_DB.commercial.find(a => a.id === 'b787') || AIRCRAFT_DB.commercial[0];
+  state.selectedAircraft = commercialAircraft;
+  state.selectedMission = { id: 'story', name: STORY_CAMPAIGN.chapters[chapterIdx].name, type: 'story', reward: STORY_CAMPAIGN.chapters[chapterIdx].reward, xp: STORY_CAMPAIGN.chapters[chapterIdx].xp, free: true };
+
+  startGame();
+
+  // Position player at first waypoint
+  const route = STORY_CAMPAIGN.chapters[chapterIdx].route;
+  state.position.set(route[0].x, route[0].alt, route[0].z);
+  storyState.waypointIdx = 1; // Start heading to waypoint 1
+
+  // Show opening dialogue
+  showStoryDialogue('ATC', route[0].brief, 5000);
+}
+
+function showStoryDialogue(speaker, text, duration = 4000) {
+  const el = document.getElementById('shudDialogue');
+  const spk = document.getElementById('shudSpeaker');
+  const txt = document.getElementById('shudDialogueText');
+  if (!el) return;
+  spk.textContent = speaker;
+  txt.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.add('hidden'), duration);
+}
+
+function showStoryWarning(text, duration = 2000) {
+  const el = document.getElementById('shudWarningText');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(el._warnTimer);
+  el._warnTimer = setTimeout(() => el.classList.add('hidden'), duration);
+}
+
+function updateStoryHUD() {
+  if (!storyState.active) return;
+  const passEl = document.getElementById('shudPassengers');
+  if (passEl) {
+    passEl.textContent = storyState.passengers;
+    passEl.className = storyState.passengers < 50 ? 'shud-pass-count danger' : 'shud-pass-count';
+  }
+  const panicEl = document.getElementById('shudPanic');
+  if (panicEl) panicEl.style.width = `${storyState.panicLevel}%`;
+
+  // Waypoint info
+  const wpInfo = getWaypointDirection(state.position, storyState);
+  if (wpInfo) {
+    const wpName = document.getElementById('shudWpName');
+    const wpDist = document.getElementById('shudWpDist');
+    if (wpName) wpName.textContent = wpInfo.name;
+    if (wpDist) wpDist.textContent = `${Math.floor(wpInfo.distance / 10)} km`;
+
+    // Compass arrow
+    const arrow = document.getElementById('shudCompassArrow');
+    if (arrow) {
+      const angle = Math.atan2(wpInfo.direction.x, -wpInfo.direction.z) * (180 / Math.PI);
+      const playerHeading = THREE.MathUtils.radToDeg(state.rotation.y);
+      arrow.style.transform = `rotate(${angle - playerHeading}deg)`;
+    }
+  }
+}
+
+function updateStoryMission(dt) {
+  if (!storyState.active || storyState.missionResult) return;
+
+  // Spawn threats in warzone
+  spawnWarzoneThreats(scene, state.position, storyState);
+
+  // Update all warzone objects
+  updateWarzoneObjects(dt, scene, state.position, storyState, {
+    onHit: (dmg, passLost) => {
+      showStoryWarning(`\u26a0 HIT! ${passLost} passenger${passLost > 1 ? 's' : ''} injured!`, 2000);
+      playSFX(200, 0.4, 'sawtooth', 0.3);
+      spawnParticles(state.position.clone(), 0xff4400, 20);
+    },
+    onNearMiss: () => {
+      showStoryWarning('NEAR MISS!', 1000);
+      playSFX(1000, 0.15, 'sine', 0.15);
+    },
+    onEnemyFire: () => {
+      playSFX(400, 0.2, 'square', 0.1);
+    },
+    onMissionFail: () => {
+      endStoryMission('failed');
+    },
+  });
+
+  // Check waypoint progression
+  checkWaypointProgress(state.position, storyState, {
+    onWaypointReached: (wp, idx) => {
+      showStoryDialogue('ATC', wp.brief || `Reached ${wp.name}`, 5000);
+      playSFX(800, 0.3, 'sine', 0.2);
+      state.score += 200;
+      if (!wp.safe) {
+        showStoryWarning('\u26a0 ENTERING WARZONE', 3000);
+        playSFX(300, 0.5, 'sawtooth', 0.2);
+      }
+    },
+    onMissionComplete: () => {
+      endStoryMission('success');
+    },
+  });
+
+  // Score from flying
+  state.score += Math.floor(state.speed * dt * 0.05);
+
+  updateStoryHUD();
+}
+
+function endStoryMission(result) {
+  storyState.missionResult = result;
+  storyState.active = false;
+  const ch = STORY_CAMPAIGN.chapters[storyState.chapterIdx];
+
+  const gradeEl = document.getElementById('srGrade');
+  const titleEl = document.getElementById('srTitle');
+
+  if (result === 'success') {
+    const passPercent = storyState.passengers / ch.passengers;
+    let grade = 'C';
+    if (passPercent >= 0.95) grade = 'S';
+    else if (passPercent >= 0.85) grade = 'A';
+    else if (passPercent >= 0.7) grade = 'B';
+    gradeEl.textContent = grade;
+    gradeEl.className = 'sr-grade success';
+    titleEl.textContent = 'MISSION COMPLETE';
+
+    const xpEarned = ch.xp + storyState.missilesDodged * 50;
+    const coinsEarned = ch.reward + storyState.passengers * 10;
+    state.player.xp += xpEarned;
+    state.player.coins += coinsEarned;
+
+    document.getElementById('srPassengers').textContent = `${storyState.passengers}/${ch.passengers}`;
+    document.getElementById('srLost').textContent = storyState.passengersLost;
+    document.getElementById('srDodged').textContent = storyState.missilesDodged;
+    document.getElementById('srXP').textContent = `+${xpEarned.toLocaleString()}`;
+    document.getElementById('srCoins').textContent = `+${coinsEarned.toLocaleString()}`;
+
+    // Unlock next chapter
+    if (storyState.chapterIdx + 1 < STORY_CAMPAIGN.chapters.length) {
+      STORY_CAMPAIGN.chapters[storyState.chapterIdx + 1].unlocked = true;
+      document.getElementById('btnStoryNext').style.display = 'block';
+    } else {
+      document.getElementById('btnStoryNext').style.display = 'none';
+    }
+
+    playSFX(600, 0.3, 'sine', 0.2);
+    setTimeout(() => playSFX(900, 0.3, 'sine', 0.15), 200);
+    setTimeout(() => playSFX(1200, 0.4, 'sine', 0.2), 400);
+  } else {
+    gradeEl.textContent = 'X';
+    gradeEl.className = 'sr-grade failed';
+    titleEl.textContent = 'MISSION FAILED';
+    document.getElementById('srPassengers').textContent = `0/${ch.passengers}`;
+    document.getElementById('srLost').textContent = ch.passengers;
+    document.getElementById('srDodged').textContent = storyState.missilesDodged;
+    document.getElementById('srXP').textContent = '+0';
+    document.getElementById('srCoins').textContent = '+0';
+    document.getElementById('btnStoryNext').style.display = 'none';
+    playSFX(150, 0.5, 'sawtooth', 0.3);
+  }
+
+  cleanupStoryObjects(scene, storyState);
+  state.phase = 'storyResult';
+  showScreen('storyResult');
+}
+
+// Story result buttons
+document.getElementById('btnStoryNext').addEventListener('click', () => {
+  const nextIdx = storyState.chapterIdx + 1;
+  if (nextIdx < STORY_CAMPAIGN.chapters.length) openBriefing(nextIdx);
+});
+document.getElementById('btnStoryMenu').addEventListener('click', () => {
+  state.phase = 'menu';
+  showScreen('mainMenu');
+  updatePlayerStatsUI();
 });
 
 // ============================================================

@@ -101,8 +101,18 @@
         <div class="mission-list" id="missionList"></div>
       </div>
 
+      <!-- Story Campaign Button -->
+      <div class="story-banner" id="storyBanner">
+        <div class="story-banner-left">
+          <div class="story-badge">CAMPAIGN</div>
+          <div class="story-title">Operation Safe Passage</div>
+          <div class="story-subtitle">India ↔ London through a warzone</div>
+        </div>
+        <button class="btn-story" id="btnStoryCampaign">PLAY STORY ▶</button>
+      </div>
+
       <button class="btn-primary" id="btnPlay">
-        <span class="btn-icon">▶</span> TAKE OFF
+        <span class="btn-icon">▶</span> FREE PLAY
       </button>
 
       <div class="player-stats-bar">
@@ -213,6 +223,76 @@
       <h2>PAUSED</h2>
       <button class="btn-primary" id="btnResume">RESUME</button>
       <button class="btn-ghost" id="btnQuit">QUIT TO MENU</button>
+    </div>
+  </div>
+
+  <!-- STORY CHAPTER SELECT -->
+  <div id="storySelect" class="overlay hidden">
+    <div class="story-select-content">
+      <h2 class="story-select-title">OPERATION SAFE PASSAGE</h2>
+      <p class="story-select-desc">100 passengers. One route. A warzone in between.</p>
+      <div class="story-chapters" id="storyChapters"></div>
+      <button class="btn-ghost" id="btnStoryBack">Back to Hangar</button>
+    </div>
+  </div>
+
+  <!-- STORY BRIEFING -->
+  <div id="storyBriefing" class="overlay hidden">
+    <div class="briefing-content">
+      <div class="briefing-badge">MISSION BRIEFING</div>
+      <h2 class="briefing-title" id="briefingTitle">Chapter 1</h2>
+      <p class="briefing-desc" id="briefingDesc">Transport 100 passengers...</p>
+      <div class="briefing-stats">
+        <div class="bs-item"><span class="bs-label">Passengers</span><span class="bs-value" id="briefPassengers">100</span></div>
+        <div class="bs-item"><span class="bs-label">Route</span><span class="bs-value" id="briefRoute">BOM → LHR</span></div>
+        <div class="bs-item"><span class="bs-label">Difficulty</span><span class="bs-value" id="briefDiff">Normal</span></div>
+        <div class="bs-item"><span class="bs-label">Reward</span><span class="bs-value" id="briefReward">1,000</span></div>
+      </div>
+      <button class="btn-primary" id="btnStartStory">LAUNCH MISSION</button>
+      <button class="btn-ghost" id="btnBriefBack">Back</button>
+    </div>
+  </div>
+
+  <!-- STORY HUD (overlays on regular HUD) -->
+  <div id="storyHud" class="story-hud hidden">
+    <div class="shud-passengers">
+      <span class="shud-icon">👥</span>
+      <span class="shud-pass-count" id="shudPassengers">100</span>
+      <span class="shud-pass-label">passengers</span>
+    </div>
+    <div class="shud-panic-wrap">
+      <span class="shud-label">PANIC</span>
+      <div class="shud-panic-bar"><div class="shud-panic-fill" id="shudPanic"></div></div>
+    </div>
+    <div class="shud-waypoint" id="shudWaypoint">
+      <div class="shud-wp-name" id="shudWpName">Mumbai Airport</div>
+      <div class="shud-wp-dist" id="shudWpDist">0 km</div>
+    </div>
+    <div class="shud-dialogue hidden" id="shudDialogue">
+      <div class="shud-dialogue-speaker" id="shudSpeaker">ATC</div>
+      <div class="shud-dialogue-text" id="shudDialogueText"></div>
+    </div>
+    <div class="shud-warning-text hidden" id="shudWarningText"></div>
+    <div class="shud-compass" id="shudCompass">
+      <div class="shud-compass-arrow" id="shudCompassArrow">▲</div>
+      <div class="shud-compass-label">NEXT WP</div>
+    </div>
+  </div>
+
+  <!-- STORY MISSION RESULT -->
+  <div id="storyResult" class="overlay hidden">
+    <div class="story-result-content">
+      <div class="sr-grade" id="srGrade">S</div>
+      <h2 id="srTitle">MISSION COMPLETE</h2>
+      <div class="sr-stats">
+        <div class="cs-row"><span>Passengers Delivered</span><span id="srPassengers">95/100</span></div>
+        <div class="cs-row"><span>Passengers Lost</span><span id="srLost">5</span></div>
+        <div class="cs-row"><span>Missiles Dodged</span><span id="srDodged">23</span></div>
+        <div class="cs-row"><span>XP Earned</span><span id="srXP">+2000</span></div>
+        <div class="cs-row"><span>Coins Earned</span><span id="srCoins">+1000</span></div>
+      </div>
+      <button class="btn-primary" id="btnStoryNext">NEXT CHAPTER</button>
+      <button class="btn-ghost" id="btnStoryMenu">Back to Hangar</button>
     </div>
   </div>
 
